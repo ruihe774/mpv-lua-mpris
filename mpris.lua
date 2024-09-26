@@ -142,7 +142,7 @@ local function fatal(msg, errno)
     error(msg)
 end
 
-local sd = ffi.load("libsystemd")
+local sd = ffi.load("libsystemd.so.0")
 local sd_vtable_format_reference = ffi.new("unsigned[1]")
 sd_vtable_format_reference[0] = 242
 
