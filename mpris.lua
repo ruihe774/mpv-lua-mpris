@@ -245,10 +245,14 @@ local mpris_def = {
         return message_append(m, "b", ffi.cast("int", false))
     end)},
     {"P", c"Identity", c"s", getter(function(b, p, i, pp, m)
-        return message_append(m, "s", "mpv")
+        return message_append(m, "s", "mpv Media Player")
     end)},
     {"P", c"DesktopEntry", c"s", getter(function(b, p, i, pp, m)
-        return message_append(m, "s", "mpv")
+        if os.getenv("container") == "flatpak" then
+            return message_append(m, "s", "io.mpv.Mpv")
+        else
+            return message_append(m, "s", "mpv")
+        end
     end)},
     {"P", c"SupportedUriSchemes", c"as", getter(function(b, p, i, pp, m)
         local schemes = {
