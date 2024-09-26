@@ -155,12 +155,7 @@ end
 local message_append = sd.sd_bus_message_append
 local message_read = sd.sd_bus_message_read
 
-local bus = ffi.new("sd_bus*[1]")
-local r = sd.sd_bus_default_user(bus)
-if r < 0 then
-    fatal("sd_bus_default_user failed", -r)
-end
-bus = bus[0]
+local bus = nil
 
 local function make_vtable(t)
     local vt = ffi.new("sd_bus_vtable[?]", #t)
@@ -275,18 +270,6 @@ local mpris_def = {
     {">"}
 }
 local mpris_vt = make_vtable(mpris_def)
-
-local r = sd.sd_bus_add_object_vtable(
-    bus,
-    nil,
-    "/org/mpris/MediaPlayer2",
-    "org.mpris.MediaPlayer2",
-    mpris_vt,
-    nil
-)
-if r < 0 then
-    fatal("sd_bus_add_object_vtable failed", -r)
-end
 
 local player_def = {
     {"<"},
@@ -530,21 +513,42 @@ local player_def = {
 
 local player_vt = make_vtable(player_def)
 
-local r = sd.sd_bus_add_object_vtable(
-    bus,
-    nil,
-    "/org/mpris/MediaPlayer2",
-    "org.mpris.MediaPlayer2.Player",
-    player_vt,
-    nil
-)
-if r < 0 then
-    fatal("sd_bus_add_object_vtable failed", -r)
-end
+local init = function()
+    local bus_buf = ffi.new("sd_bus*[1]")
+    local r = sd.sd_bus_default_user(bus_buf)
+    if r < 0 then
+        fatal("sd_bus_default_user failed", -r)
+    end
+    bus = bus_buf[0]
 
-local r = sd.sd_bus_request_name(bus, "org.mpris.MediaPlayer2.mpv", 0)
-if r < 0 then
-    fatal("sd_bus_request_name failed", -r)
+    local r = sd.sd_bus_add_object_vtable(
+        bus,
+        nil,
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2",
+        mpris_vt,
+        nil
+    )
+    if r < 0 then
+        fatal("sd_bus_add_object_vtable failed", -r)
+    end
+
+    local r = sd.sd_bus_add_object_vtable(
+        bus,
+        nil,
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player",
+        player_vt,
+        nil
+    )
+    if r < 0 then
+        fatal("sd_bus_add_object_vtable failed", -r)
+    end
+
+    local r = sd.sd_bus_request_name(bus, "org.mpris.MediaPlayer2.mpv", 0)
+    if r < 0 then
+        fatal("sd_bus_request_name failed", -r)
+    end
 end
 
 local function cleanup()
@@ -556,6 +560,8 @@ local function cleanup()
 end
 
 function _G.mp_event_loop()
+    init()
+
     local buflen = 256
     local buf = ffi.new("char[256]")
 
