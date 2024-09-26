@@ -2,12 +2,12 @@ local ffi = require("ffi")
 local bit = require("bit")
 
 ffi.cdef[[
-    char* strerror(int errno);
+    char *strerror(int errno);
 
     void *malloc(size_t size);
     void free(void *ptr);
 
-    ssize_t read(int fd, void* buf, size_t count);
+    ssize_t read(int fd, void *buf, size_t count);
 
     struct pollfd {
         int   fd;
@@ -101,7 +101,7 @@ ffi.cdef[[
 
 local c_str_cache = {}
 
-local c = function(s)
+local function c(s)
     local p = c_str_cache[s]
     if p ~= nil then return p end
     p = ffi.gc(ffi.C.malloc(#s + 1), ffi.C.free)
@@ -112,19 +112,19 @@ end
 
 local callbacks = {}
 
-local method = function(f)
+local function method(f)
     f = ffi.cast("sd_bus_message_handler_t", f)
     table.insert(callbacks, f)
     return f
 end
 
-local getter = function(f)
+local function getter(f)
     f = ffi.cast("sd_bus_property_get_t", f)
     table.insert(callbacks, f)
     return f
 end
 
-local setter = function(f)
+local function setter(f)
     f = ffi.cast("sd_bus_property_set_t", f)
     table.insert(callbacks, f)
     return f
@@ -134,24 +134,23 @@ local POLLIN = 1
 local EINTR = 4
 local INT_MAX = 2147483647
 local CLOCK_MONOTONIC = 1
-local BUS_ERROR_FAILED = c"org.freedesktop.DBus.Error.Failed"
 
-local fatal = function(msg, errno)
+local function fatal(msg, errno)
     if errno ~= nil then
         msg = msg .. ": " .. ffi.string(ffi.C.strerror(errno))
     end
     error(msg)
 end
 
-local sd = ffi.load("/usr/lib/x86_64-linux-gnu/libsystemd.so.0")
+local sd = ffi.load("libsystemd")
 local sd_vtable_format_reference = ffi.new("unsigned[1]")
 sd_vtable_format_reference[0] = 242
 
-local empty_reply = function(m)
+local function empty_reply(m)
     return sd.sd_bus_reply_method_return(m, "")
 end
-local error_reply = function(e, msg)
-    return sd.sd_bus_error_set(e, BUS_ERROR_FAILED, msg)
+local function error_reply(e, msg)
+    return sd.sd_bus_error_set(e, "org.freedesktop.DBus.Error.Failed", msg)
 end
 local message_append = sd.sd_bus_message_append
 local message_read = sd.sd_bus_message_read
@@ -163,7 +162,7 @@ if r < 0 then
 end
 bus = bus[0]
 
-local make_vtable = function(t)
+local function make_vtable(t)
     local vt = ffi.new("sd_bus_vtable[?]", #t)
     for i, entry in ipairs(t) do
         local ventry = vt[i - 1]
@@ -548,7 +547,7 @@ if r < 0 then
     fatal("sd_bus_request_name failed", -r)
 end
 
-local cleanup = function()
+local function cleanup()
     sd.sd_bus_release_name(bus, "org.mpris.MediaPlayer2.mpv")
     sd.sd_bus_flush_close_unref(bus)
     for _, callback in ipairs(callbacks) do
@@ -556,7 +555,7 @@ local cleanup = function()
     end
 end
 
-_G.mp_event_loop = function()
+function _G.mp_event_loop()
     local buflen = 256
     local buf = ffi.new("char[256]")
 
@@ -621,7 +620,7 @@ mp.register_event("playback-restart", function()
     end
 end)
 
-local emit_changed = function(interface, prop)
+local function emit_changed(interface, prop)
     sd.sd_bus_emit_properties_changed(bus, "/org/mpris/MediaPlayer2", interface, prop, nil)
 end
 
@@ -633,13 +632,13 @@ mp.observe_property("vo-configured", nil, function()
     emit_changed("org.mpris.MediaPlayer2", "CanSetFullscreen")
 end)
 
-local play_state_observer = function()
+local function play_state_observer()
     emit_changed("org.mpris.MediaPlayer2.Player", "PlaybackStatus")
 end
 mp.observe_property("pause", nil, play_state_observer)
 mp.observe_property("idle-active", nil, play_state_observer)
 
-local loop_state_observer = function()
+local function loop_state_observer()
     emit_changed("org.mpris.MediaPlayer2.Player", "LoopStatus")
 end
 mp.observe_property("loop-file", nil, loop_state_observer)
@@ -653,14 +652,14 @@ mp.observe_property("shuffle", nil, function()
     emit_changed("org.mpris.MediaPlayer2.Player", "Shuffle")
 end)
 
-local metadata_observer = function()
+local function metadata_observer()
     emit_changed("org.mpris.MediaPlayer2.Player", "Metadata")
 end
 mp.observe_property("playlist-pos", nil, metadata_observer)
 mp.observe_property("media-title", nil, metadata_observer)
 mp.observe_property("duration", nil, metadata_observer)
 
-local volume_observer = function()
+local function volume_observer()
     emit_changed("org.mpris.MediaPlayer2.Player", "Volume")
 end
 mp.observe_property("volume", nil, volume_observer)
