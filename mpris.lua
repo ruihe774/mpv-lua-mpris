@@ -1,5 +1,10 @@
-local ffi = require("ffi")
-local bit = require("bit")
+local r, ffi, bit = pcall(function()
+    return require("ffi"), require("bit")
+end)
+
+if not r then
+    error("this script requires LuaJIT, and mpv is not compiled with it")
+end
 
 ffi.cdef[[
     char *strerror(int errno);
