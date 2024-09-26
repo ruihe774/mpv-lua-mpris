@@ -80,6 +80,7 @@ ffi.cdef[[
     int sd_bus_process(sd_bus *bus, sd_bus_message **ret);
     int sd_bus_reply_method_return(sd_bus_message *call, const char *types, ...);
     int sd_bus_message_append(sd_bus_message *call, const char *types, ...);
+    int sd_bus_message_append_strv(sd_bus_message *m, char **l);
     int sd_bus_message_read(sd_bus_message *call, const char *types, ...);
     int sd_bus_error_set(sd_bus_error *e, const char *name, const char *message);
     int sd_bus_emit_signal(
@@ -206,6 +207,18 @@ local function make_vtable(t)
     return vt
 end
 
+local function message_append_as(m, t)
+    local strv = ffi.new("char*[?]", #t + 1)
+    local c_strs = {}
+    for i, s in ipairs(t) do
+        local cs = c(s)
+        c_strs[i] = cs
+        strv[i - 1] = cs
+    end
+    strv[#t] = nil
+    return sd.sd_bus_message_append_strv(m, strv)
+end
+
 local mpris_def = {
     {"<"},
     {"M", c"Raise", c"", c"", method(function(m, ud, e)
@@ -255,21 +268,136 @@ local mpris_def = {
         end
     end)},
     {"P", c"SupportedUriSchemes", c"as", getter(function(b, p, i, pp, m)
-        local schemes = {
-            "ftp",
-            "http",
-            "https",
-            "mms",
-            "rtmp",
-            "rtsp",
-            "sftp",
-            "smb"
-        }
-        return message_append(m, "as", ffi.cast("int", #schemes), unpack(schemes))
+        local schemes = mp.get_property_native("protocol-list", {})
+        return message_append_as(m, schemes)
     end)},
     {"P", c"SupportedMimeTypes", c"as", getter(function(b, p, i, pp, m)
-        local types = {}
-        return message_append(m, "as", ffi.cast("int", #types), unpack(types))
+        -- from mpv.desktop
+        local types = {
+            "application/ogg",
+            "application/x-ogg",
+            "application/mxf",
+            "application/sdp",
+            "application/smil",
+            "application/x-smil",
+            "application/streamingmedia",
+            "application/x-streamingmedia",
+            "application/vnd.rn-realmedia",
+            "application/vnd.rn-realmedia-vbr",
+            "audio/aac",
+            "audio/x-aac",
+            "audio/vnd.dolby.heaac.1",
+            "audio/vnd.dolby.heaac.2",
+            "audio/aiff",
+            "audio/x-aiff",
+            "audio/m4a",
+            "audio/x-m4a",
+            "application/x-extension-m4a",
+            "audio/mp1",
+            "audio/x-mp1",
+            "audio/mp2",
+            "audio/x-mp2",
+            "audio/mp3",
+            "audio/x-mp3",
+            "audio/mpeg",
+            "audio/mpeg2",
+            "audio/mpeg3",
+            "audio/mpegurl",
+            "audio/x-mpegurl",
+            "audio/mpg",
+            "audio/x-mpg",
+            "audio/rn-mpeg",
+            "audio/musepack",
+            "audio/x-musepack",
+            "audio/ogg",
+            "audio/scpls",
+            "audio/x-scpls",
+            "audio/vnd.rn-realaudio",
+            "audio/wav",
+            "audio/x-pn-wav",
+            "audio/x-pn-windows-pcm",
+            "audio/x-realaudio",
+            "audio/x-pn-realaudio",
+            "audio/x-ms-wma",
+            "audio/x-pls",
+            "audio/x-wav",
+            "video/mpeg",
+            "video/x-mpeg2",
+            "video/x-mpeg3",
+            "video/mp4v-es",
+            "video/x-m4v",
+            "video/mp4",
+            "application/x-extension-mp4",
+            "video/divx",
+            "video/vnd.divx",
+            "video/msvideo",
+            "video/x-msvideo",
+            "video/ogg",
+            "video/quicktime",
+            "video/vnd.rn-realvideo",
+            "video/x-ms-afs",
+            "video/x-ms-asf",
+            "audio/x-ms-asf",
+            "application/vnd.ms-asf",
+            "video/x-ms-wmv",
+            "video/x-ms-wmx",
+            "video/x-ms-wvxvideo",
+            "video/x-avi",
+            "video/avi",
+            "video/x-flic",
+            "video/fli",
+            "video/x-flc",
+            "video/flv",
+            "video/x-flv",
+            "video/x-theora",
+            "video/x-theora+ogg",
+            "video/x-matroska",
+            "video/mkv",
+            "audio/x-matroska",
+            "application/x-matroska",
+            "video/webm",
+            "audio/webm",
+            "audio/vorbis",
+            "audio/x-vorbis",
+            "audio/x-vorbis+ogg",
+            "video/x-ogm",
+            "video/x-ogm+ogg",
+            "application/x-ogm",
+            "application/x-ogm-audio",
+            "application/x-ogm-video",
+            "application/x-shorten",
+            "audio/x-shorten",
+            "audio/x-ape",
+            "audio/x-wavpack",
+            "audio/x-tta",
+            "audio/AMR",
+            "audio/ac3",
+            "audio/eac3",
+            "audio/amr-wb",
+            "video/mp2t",
+            "audio/flac",
+            "audio/mp4",
+            "application/x-mpegurl",
+            "video/vnd.mpegurl",
+            "application/vnd.apple.mpegurl",
+            "audio/x-pn-au",
+            "video/3gp",
+            "video/3gpp",
+            "video/3gpp2",
+            "audio/3gpp",
+            "audio/3gpp2",
+            "video/dv",
+            "audio/dv",
+            "audio/opus",
+            "audio/vnd.dts",
+            "audio/vnd.dts.hd",
+            "audio/x-adpcm",
+            "application/x-cue",
+            "audio/m3u",
+            "audio/vnd.wave",
+            "video/vnd.avi"
+        }
+        return message_append_as(m, types)
     end)},
     {">"}
 }
@@ -640,6 +768,10 @@ end)
 
 mp.observe_property("vo-configured", nil, function()
     emit_changed("org.mpris.MediaPlayer2", "CanSetFullscreen")
+end)
+
+mp.observe_property("protocol-list", nil, function()
+    emit_changed("org.mpris.MediaPlayer2", "SupportedUriSchemes")
 end)
 
 local function play_state_observer()
