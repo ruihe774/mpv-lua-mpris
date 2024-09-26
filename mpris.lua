@@ -577,12 +577,14 @@ local player_def = {
     end)},
     {"P", c"Metadata", c"a{sv}", getter(function(b, p, i, pp, m)
         local pos = mp.get_property("playlist-pos", "0")
-        local title = mp.get_property("media-title", "Unknown Title")
+        local title = mp.get_property("media-title")
         local duration = mp.get_property_number("duration")
         local dict = {
             ["mpris:trackid"] = {"o", "/" .. pos},
-            ["xesam:title"] = {"s", title},
         }
+        if title ~= nil then
+            dict["xesam:title"] = {"s", title}
+        end
         if duration ~= nil then
             dict["mpris:length"] = {"x", ffi.cast("int64_t", duration * 1000000)}
         end
