@@ -1,3 +1,5 @@
+-- Copyright (C) 2024 Misaki Kasumi <misakikasumi@outlook.com>
+
 local r, ffi, bit = pcall(function()
     return require("ffi"), require("bit")
 end)
